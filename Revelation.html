@@ -209,24 +209,24 @@
             startTime: null,
             reveals: 0,
             correctWords: new Set(),
-            revealedWords: new Set(),
+            revealedWords: new Set(),   // track revealed separately
             selectedWord: null,
-            lastDirection: null
+            lastDirection: null        // remember typing direction preference
         };
         ui.revealCounter.textContent = 0;
         ui.stopwatch.textContent = '00:00';
-        // Start disabled before a selection, then we enable based on selection.
         ui.revealWordButton.disabled = true;
     }
 
+    // Centralized button state update
     function updateRevealButtonState() {
         const w = gameState.selectedWord;
         if (!w) {
             ui.revealWordButton.disabled = true;
             return;
         }
-        const disabled = gameState.correctWords.has(w.answer) || gameState.revealedWords.has(w.answer);
-        ui.revealWordButton.disabled = disabled ? true : false;
+        ui.revealWordButton.disabled =
+            gameState.correctWords.has(w.answer) || gameState.revealedWords.has(w.answer);
     }
 
     async function fetchClues(count = 200) {
@@ -375,7 +375,7 @@
                         ev.target.select();
                         justFocused = true;
                         setTimeout(() => { justFocused = false; }, 0);
-                        updateRevealButtonState(); // ensure UI updates on focus immediately
+                        updateRevealButtonState();
                     });
 
                     input.addEventListener('click', (ev) => {
@@ -384,7 +384,7 @@
                             return;
                         }
                         toggleDirection(r, c);
-                        updateRevealButtonState(); // ensure UI updates on click immediately
+                        updateRevealButtonState();
                     });
 
                     input.addEventListener('keydown', (ev) => {
@@ -401,11 +401,8 @@
                                 input.value = '';
                                 checkWordCompletion(r, c);
                             } else if (idx > 0) {
-                                const prevIdx = idx - 1;
-                                const prevRow = selected.direction === 'across' ? selected.row : selected.row + prevIdx;
-                                const prevCol = selected.direction === 'across' ? selected.col + prevIdx : selected.col;
-                                const prevInput = document.querySelector(`input[data-row="${prevRow}"][data-col="${prevCol}"]`);
-                                if (prevInput && !prevInput.disabled) prevInput.focus();
+                                // Move to previous editable cell (skips disabled letters)
+                                focusEditableInWord(selected, idx, false);
                             }
                         } else if (ev.key === 'Delete') {
                             ev.preventDefault();
@@ -445,7 +442,7 @@
             clueDiv.id = `clue-${word.number}`;
             clueDiv.onclick = () => {
                 selectWord(word, true);
-                updateRevealButtonState(); // ensure UI updates after clicking clue
+                updateRevealButtonState();
             };
             (word.direction === 'across' ? ui.acrossClues : ui.downClues).appendChild(clueDiv);
         });
@@ -494,10 +491,13 @@
         if (!words.length) words = cell.words;
         if (!words.length) return;
 
+        // Prefer last used direction if available
         let candidate = null;
         if (gameState.lastDirection) {
             candidate = words.find(w => w.direction === gameState.lastDirection);
         }
+
+        // Fallbacks: prefer starting word, then across, then any
         if (!candidate) {
             const startingWords = words.filter(w => w.row === row && w.col === col);
             candidate = startingWords[0] || words.find(w => w.direction === 'across') || words[0];
@@ -506,7 +506,7 @@
         const idx = getIndexInWord(candidate, row, col);
         selectWord(candidate, true, idx);
         gameState.lastDirection = candidate.direction;
-        updateRevealButtonState(); // ensure UI updates on selection from cell
+        updateRevealButtonState();
     }
 
     function toggleDirection(row, col) {
@@ -522,7 +522,7 @@
                 const idx = getIndexInWord(otherWord, row, col);
                 selectWord(otherWord, true, idx);
                 gameState.lastDirection = otherWord.direction;
-                updateRevealButtonState(); // ensure UI updates on toggle
+                updateRevealButtonState();
             }
         }
     }
@@ -537,18 +537,29 @@
         return -1;
     }
 
+    // Helper: focus next/previous editable letter in selected word (skips disabled cells)
+    function focusEditableInWord(word, startIdx, forward = true) {
+        const step = forward ? 1 : -1;
+        let i = startIdx + step;
+        while (i >= 0 && i < word.answer.length) {
+            const r = word.direction === 'across' ? word.row : word.row + i;
+            const c = word.direction === 'across' ? word.col + i : word.col;
+            const el = document.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+            if (el && !el.disabled) { el.focus(); return true; }
+            i += step;
+        }
+        return false;
+    }
+
     function handleAdvanceAfterType(row, col) {
         const selected = gameState.selectedWord;
         if (!selected) return;
         const idx = getIndexInWord(selected, row, col);
         if (idx === -1) return;
-        const nextIdx = idx + 1;
-        if (nextIdx < selected.answer.length) {
-            const nextRow = selected.direction === 'across' ? selected.row : selected.row + nextIdx;
-            const nextCol = selected.direction === 'across' ? selected.col + nextIdx : selected.col;
-            const nextInput = document.querySelector(`input[data-row="${nextRow}"][data-col="${nextCol}"]`);
-            if (nextInput && !nextInput.disabled) nextInput.focus();
-        } else {
+
+        // Move to the next editable cell in this word, skipping disabled (solved/revealed) cells
+        const moved = focusEditableInWord(selected, idx, true);
+        if (!moved) {
             const curInput = document.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
             if (curInput) curInput.focus();
         }
@@ -582,7 +593,7 @@
             }
         });
         checkWinCondition();
-        updateRevealButtonState(); // reflect status immediately after any change
+        updateRevealButtonState();
     }
 
     function highlightWord(word, typeClass) {
@@ -619,7 +630,7 @@
         gameState.reveals++;
         ui.revealCounter.textContent = gameState.reveals;
         checkWinCondition();
-        updateRevealButtonState(); // ensure the button reflects the current word status
+        updateRevealButtonState();
     }
 
     function checkWinCondition() {
