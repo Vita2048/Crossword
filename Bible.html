@@ -1,158 +1,147 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8" />
     <title>Bible Crossword</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <style>
-        :root {
-            --bg-dark: #1e293b;
-            --grid-bg: #334155;
-            --cell-bg: #475569;
-            --text-primary: #cbd5e1;
-            --text-secondary: #94a3b8;
-            --highlight-active: #facc15;
-            --highlight-selected: #38bdf8;
-            --color-correct: #4ade80;
-            --color-revealed: #60a5fa;
+        :root{
+            --bg-dark:#1e293b;
+            --grid-bg:#334155;
+            --cell-bg:#475569;
+            --text-primary:#cbd5e1;
+            --text-secondary:#94a3b8;
+            --highlight-active:#facc15;
+            --highlight-selected:#38bdf8;
+            --color-correct:#4ade80;
+            --color-revealed:#60a5fa;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-primary);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
+        body{
+            font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+            background-color:var(--bg-dark);
+            color:var(--text-primary);
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            min-height:100vh;
+            margin:0;
         }
 
-        .game-container {
-            width: 95%;
-            max-width: 1200px;
-            background: var(--grid-bg);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        /* When body has .initial-screen the top-right controls are hidden */
+        body.initial-screen .controls { display: none; }
+
+        .game-container{
+            width:95%;
+            max-width:1200px;
+            background:var(--grid-bg);
+            padding:20px;
+            border-radius:12px;
+            box-shadow:0 10px 30px rgba(0,0,0,0.3);
         }
 
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--cell-bg);
+        header{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:20px;
+            padding-bottom:15px;
+            border-bottom:1px solid var(--cell-bg);
         }
 
-        header h1 {
-            font-size: 1.8em;
-            color: #fff;
-            margin: 0;
+        header h1{ font-size:1.8em; color:#fff; margin:0; }
+
+        .controls{ display:flex; align-items:center; gap:20px; }
+        .stats,.buttons{ display:flex; align-items:center; gap:15px; }
+        .stat-item{ display:flex; align-items:center; gap:5px; font-size:1.1em; font-weight:500; }
+
+        .btn{
+            padding:10px 20px;
+            font-size:1em;
+            font-weight:bold;
+            cursor:pointer;
+            border:none;
+            border-radius:8px;
+            transition:all .2s;
         }
 
-        .controls { display: flex; align-items: center; gap: 20px; }
-        .stats, .buttons { display: flex; align-items: center; gap: 15px; }
-        .stat-item { display:flex; align-items:center; gap:5px; font-size:1.1em; font-weight:500; }
+        #new-game-btn{ background-color:var(--cell-bg); color:var(--text-primary); }
+        #new-game-btn:hover{ background-color:#5a6b82; }
 
-        .btn {
-            padding: 10px 20px;
-            font-size: 1em;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-            border-radius: 8px;
-            transition: all 0.2s;
+        .main-content{ display:flex; gap:30px; }
+        #crossword-grid{ flex:1; }
+        #grid-container{ display:grid; }
+
+        .grid-cell{
+            width:35px; height:35px;
+            background-color:var(--cell-bg);
+            border:1px solid var(--grid-bg);
+            position:relative; border-radius:4px;
         }
 
-        #new-game-btn { background-color: var(--cell-bg); color: var(--text-primary); }
-        #new-game-btn:hover { background-color: #5a6b82; }
+        .grid-cell.empty{ background-color:transparent; border:none; }
+        .grid-cell.selected-word{ background-color:#5a82b0; }
 
-        .main-content { display: flex; gap: 30px; }
-        #crossword-grid { flex: 1; }
-        #grid-container { display: grid; }
-
-        .grid-cell {
-            width: 35px;
-            height: 35px;
-            background-color: var(--cell-bg);
-            border: 1px solid var(--grid-bg);
-            position: relative;
-            border-radius: 4px;
+        .grid-cell input{
+            width:100%; height:100%;
+            text-align:center; text-transform:uppercase;
+            font-size:1.5em; font-weight:bold;
+            border:none; padding:0; margin:0;
+            background-color:transparent; color:#fff;
+            caret-color:var(--highlight-active);
         }
 
-        .grid-cell.empty { background-color: transparent; border: none; }
-        .grid-cell.selected-word { background-color: #5a82b0; }
+        .grid-cell input:focus{ outline:none; background-color:var(--highlight-active); color:#111; }
 
-        .grid-cell input {
-            width: 100%;
-            height: 100%;
-            text-align: center;
-            text-transform: uppercase;
-            font-size: 1.5em;
-            font-weight: bold;
-            border: none;
-            padding: 0;
-            margin: 0;
-            background-color: transparent;
-            color: #fff;
-            caret-color: var(--highlight-active);
+        .grid-cell.correct input{ color:var(--color-correct); }
+        .grid-cell.revealed input{ color:var(--color-revealed); }
+
+        .grid-cell span{
+            position:absolute; top:2px; left:3px;
+            font-size:.7em; font-weight:bold; color:var(--text-secondary);
+            pointer-events:none;
         }
 
-        .grid-cell input:focus { outline: none; background-color: var(--highlight-active); color: #111; }
+        #clues-container{ width:40%; display:flex; flex-direction:column; }
+        #reveal-word-btn{ background-color:var(--highlight-active); color:#111; width:100%; margin-bottom:20px; }
+        #reveal-word-btn:hover:not(:disabled){ filter:brightness(1.1); }
+        #reveal-word-btn:disabled{ background-color:#6c757d; cursor:not-allowed; color:#ccc; }
 
-        .grid-cell.correct input { color: var(--color-correct); }
-        .grid-cell.revealed input { color: var(--color-revealed); }
+        .clues-list{ overflow-y:auto; flex-grow:1; padding-right:10px; }
+        .clues-list h3{ border-bottom:2px solid var(--highlight-selected); padding-bottom:8px; margin-bottom:10px; color:#fff; }
 
-        .grid-cell span {
-            position: absolute;
-            top: 2px;
-            left: 3px;
-            font-size: 0.7em;
-            font-weight: bold;
-            color: var(--text-secondary);
-            pointer-events: none;
-        }
+        .clue{ padding:8px; border-radius:4px; transition:background-color .2s; cursor:pointer; line-height:1.4; }
+        .clue:hover{ background-color:var(--cell-bg); }
+        .clue.selected{ background-color:var(--highlight-selected); color:#111; font-weight:bold; }
+        .clue.correct{ text-decoration:line-through; color:var(--color-correct); opacity:.7; }
+        .clue.revealed{ color:var(--color-revealed); font-style:italic; }
 
-        #clues-container { width: 40%; display:flex; flex-direction:column; }
-        #reveal-word-btn { background-color: var(--highlight-active); color: #111; width:100%; margin-bottom:20px; }
-        #reveal-word-btn:hover:not(:disabled) { filter: brightness(1.1); }
-        #reveal-word-btn:disabled { background-color:#6c757d; cursor:not-allowed; color:#ccc; }
+        #initial-setup, #loading-screen{ text-align:center; padding:50px 0; }
+        #initial-setup .choice{ display:inline-block; margin:10px; }
+        #initial-setup .choice .btn{ padding:15px 30px; font-size:1.1em; min-width:160px; }
 
-        .clues-list { overflow-y:auto; flex-grow:1; padding-right:10px; }
-        .clues-list h3 { border-bottom:2px solid var(--highlight-selected); padding-bottom:8px; margin-bottom:10px; color:#fff; }
+        #win-banner{ font-size:3em; font-weight:bold; margin:20px 0; animation:flash 1s infinite; text-align:center; }
+        @keyframes flash{ 0%,100%{ color:#28a745; text-shadow:0 0 10px #28a745 } 50%{ color:#facc15; text-shadow:0 0 10px #facc15 } }
 
-        .clue { padding:8px; border-radius:4px; transition:background-color 0.2s; cursor:pointer; line-height:1.4; }
-        .clue:hover { background-color: var(--cell-bg); }
-        .clue.selected { background-color: var(--highlight-selected); color:#111; font-weight:bold; }
-        .clue.correct { text-decoration: line-through; color: var(--color-correct); opacity: 0.7; }
-        .clue.revealed { color: var(--color-revealed); font-style: italic; }
-
-        #initial-setup, #loading-screen { text-align:center; padding:50px 0; }
-        #initial-setup .choice { display:inline-block; margin:10px; }
-        #initial-setup .choice .btn { padding:15px 30px; font-size:1.1em; min-width:160px; }
-
-        #win-banner { font-size:3em; font-weight:bold; margin:20px 0; animation: flash 1s infinite; text-align:center; }
-        @keyframes flash { 0%,100%{ color:#28a745; text-shadow:0 0 10px #28a745 } 50%{ color:#facc15; text-shadow:0 0 10px #facc15 } }
-
-        .hidden { display:none !important; }
+        .hidden{ display:none !important; }
     </style>
 </head>
-<body>
+<body class="initial-screen">
     <div class="game-container">
         <header>
             <h1>Bible Crossword</h1>
             <div class="controls">
                 <div id="stats" class="stats">
-                     <div class="stat-item">
+                    <div class="stat-item">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/></svg>
                         <span id="stopwatch">00:00</span>
                     </div>
-                     <div class="stat-item">
+                    <div class="stat-item">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/><path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/></svg>
                         <span id="reveal-counter">0</span>
                     </div>
                 </div>
+
                 <div class="buttons">
                     <button id="new-game-btn" class="btn">New Game</button>
                 </div>
@@ -160,13 +149,9 @@
         </header>
 
         <div id="initial-setup">
-            <div style="margin-bottom:12px; font-size:1.1em; color:var(--text-secondary);">Choose a puzzle source</div>
-            <div class="choice">
-                <button id="btn-generic" class="btn">Generic Bible</button>
-            </div>
-            <div class="choice">
-                <button id="btn-revelation" class="btn">Revelations</button>
-            </div>
+            <div style="margin-bottom:12px;font-size:1.1em;color:var(--text-secondary);">Choose a puzzle source</div>
+            <div class="choice"><button id="btn-generic" class="btn">Generic Bible</button></div>
+            <div class="choice"><button id="btn-revelation" class="btn">Revelations</button></div>
         </div>
 
         <div id="loading-screen" class="hidden">Loading...</div>
@@ -186,7 +171,6 @@
 
 <script>
     const ui = {
-        gameContainer: document.querySelector('.game-container'),
         initialSetup: document.getElementById('initial-setup'),
         loadingScreen: document.getElementById('loading-screen'),
         mainContent: document.getElementById('main-content'),
@@ -199,24 +183,28 @@
         revealWordButton: document.getElementById('reveal-word-btn'),
         newGameButton: document.getElementById('new-game-btn'),
         btnGeneric: document.getElementById('btn-generic'),
-        btnRevelation: document.getElementById('btn-revelation'),
+        btnRevelation: document.getElementById('btn-revelation')
     };
 
-    // centralized update function is declared early so it's available for selectWord/startGame etc.
-    function updateRevealButtonState() {
+    // Make updateRevealButtonState available early
+    function updateRevealButtonState(){
         const w = gameState.selectedWord;
-        if (!w) {
-            ui.revealWordButton.disabled = true;
-            return;
-        }
-        ui.revealWordButton.disabled =
-            gameState.correctWords.has(w.answer) || gameState.revealedWords.has(w.answer);
+        if (!w) { ui.revealWordButton.disabled = true; return; }
+        ui.revealWordButton.disabled = gameState.correctWords.has(w.answer) || gameState.revealedWords.has(w.answer);
     }
+
+    // Source URLs
+    const SOURCE_URLS = {
+        generic: 'https://vita2048.github.io/Crossword/BibleDB.csv',
+        revelation: 'https://vita2048.github.io/Crossword/BibleDBRevelation.csv'
+    };
 
     ui.btnGeneric.addEventListener('click', () => startGameWithSource('generic'));
     ui.btnRevelation.addEventListener('click', () => startGameWithSource('revelation'));
     ui.revealWordButton.addEventListener('click', revealWord);
     ui.newGameButton.addEventListener('click', () => {
+        // show initial choices again and hide main content
+        document.body.classList.add('initial-screen');
         ui.initialSetup.classList.remove('hidden');
         ui.mainContent.classList.add('hidden');
         ui.winBanner.classList.add('hidden');
@@ -227,7 +215,7 @@
     let gameState = {};
     let justFocused = false;
 
-    function resetGameState() {
+    function resetGameState(){
         gameState = {
             grid: [],
             placedWords: [],
@@ -249,15 +237,12 @@
         ui.gridContainer.innerHTML = '';
     }
 
-    const SOURCE_URLS = {
-        generic: 'https://vita2048.github.io/Crossword/BibleDB.csv',
-        revelation: 'https://vita2048.github.io/Crossword/BibleDBRevelation.csv'
-    };
-
-    function startGameWithSource(sourceKey) {
+    function startGameWithSource(sourceKey){
         resetGameState();
         gameState.sourceKey = sourceKey;
         gameState.sourceUrl = SOURCE_URLS[sourceKey] || SOURCE_URLS.generic;
+        // hide initial screen and reveal controls by removing the class
+        document.body.classList.remove('initial-screen');
         ui.initialSetup.classList.add('hidden');
         ui.winBanner.classList.add('hidden');
         ui.mainContent.classList.add('hidden');
@@ -265,7 +250,7 @@
         startGame();
     }
 
-    async function fetchClues(count = 200) {
+    async function fetchClues(count = 200){
         const url = gameState.sourceUrl || SOURCE_URLS.generic;
         const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
@@ -274,23 +259,23 @@
         let startIndex = 0;
         if (lines[0] && lines[0].toUpperCase().startsWith('ANSWER')) startIndex = 1;
         const pairs = [];
-        for (let i = startIndex; i < lines.length && pairs.length < count; i++) {
+        for (let i = startIndex; i < lines.length && pairs.length < count; i++){
             const idx = lines[i].indexOf(',');
             if (idx === -1) continue;
-            let answer = lines[i].slice(0, idx).trim().toUpperCase().replace(/[^A-Z]/g, '');
-            let clue = lines[i].slice(idx + 1).trim();
+            let answer = lines[i].slice(0, idx).trim().toUpperCase().replace(/[^A-Z]/g,'');
+            let clue = lines[i].slice(idx+1).trim();
             if (!answer || !clue) continue;
             if (answer.length <= 2 || answer.length >= 15) continue;
             pairs.push({ answer, clue });
         }
-        for (let i = pairs.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
+        for (let i = pairs.length-1; i>0; i--){
+            const j = Math.floor(Math.random()*(i+1));
             [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
         }
         return pairs;
     }
 
-    async function startGame() {
+    async function startGame(){
         if (gameState.timerInterval) stopTimer();
         ui.loadingScreen.classList.remove('hidden');
 
@@ -300,39 +285,39 @@
             generateCrosswordLayout(cluePairs);
             renderGrid();
             renderClues();
-            const sortedWords = [...gameState.placedWords].sort((a, b) => a.number - b.number);
+            const sortedWords = [...gameState.placedWords].sort((a,b)=>a.number-b.number);
             selectWord(sortedWords[0], false);
             ui.loadingScreen.classList.add('hidden');
             ui.mainContent.classList.remove('hidden');
             startTimer();
             updateRevealButtonState();
-        } catch (error) {
-            console.error('Error starting game:', error);
+        } catch(err){
+            console.error('Error starting game:', err);
             ui.loadingScreen.innerHTML = 'Failed to generate crossword. Please try again.';
         }
     }
 
-    function generateCrosswordLayout(cluePairs) {
-        cluePairs.sort((a, b) => b.answer.length - a.answer.length);
+    function generateCrosswordLayout(cluePairs){
+        cluePairs.sort((a,b)=>b.answer.length-a.answer.length);
         const gridSize = 25;
-        gameState.grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
+        gameState.grid = Array(gridSize).fill(null).map(()=>Array(gridSize).fill(null));
         const firstWord = cluePairs.shift();
-        placeWord(firstWord, 12, Math.floor((gridSize - firstWord.answer.length) / 2), 'across');
+        placeWord(firstWord,12,Math.floor((gridSize-firstWord.answer.length)/2),'across');
         let placedCount = 0;
         const maxWords = 15;
-        while (cluePairs.length > 0 && placedCount < maxWords) {
+        while(cluePairs.length>0 && placedCount<maxWords){
             const wordToPlace = cluePairs.shift();
-            let placed = false;
-            for (const placedWord of gameState.placedWords) {
-                for (let i = 0; i < wordToPlace.answer.length; i++) {
-                    for (let j = 0; j < placedWord.answer.length; j++) {
-                        if (wordToPlace.answer[i] === placedWord.answer[j]) {
-                            const newDirection = placedWord.direction === 'across' ? 'down' : 'across';
-                            const newRow = placedWord.direction === 'across' ? placedWord.row - i : placedWord.row + j;
-                            const newCol = placedWord.direction === 'across' ? placedWord.col + j : placedWord.col - i;
-                            if (canPlace(wordToPlace, newRow, newCol, newDirection)) {
-                                placeWord(wordToPlace, newRow, newCol, newDirection);
-                                placed = true;
+            let placed=false;
+            for(const placedWord of gameState.placedWords){
+                for(let i=0;i<wordToPlace.answer.length;i++){
+                    for(let j=0;j<placedWord.answer.length;j++){
+                        if (wordToPlace.answer[i]===placedWord.answer[j]){
+                            const newDirection = placedWord.direction==='across' ? 'down' : 'across';
+                            const newRow = placedWord.direction==='across' ? placedWord.row - i : placedWord.row + j;
+                            const newCol = placedWord.direction==='across' ? placedWord.col + j : placedWord.col - i;
+                            if (canPlace(wordToPlace,newRow,newCol,newDirection)){
+                                placeWord(wordToPlace,newRow,newCol,newDirection);
+                                placed=true;
                                 placedCount++;
                                 break;
                             }
@@ -345,32 +330,32 @@
         }
     }
 
-    function placeWord(word, row, col, direction) {
-        word.row = row; word.col = col; word.direction = direction;
+    function placeWord(word,row,col,direction){
+        word.row=row; word.col=col; word.direction=direction;
         gameState.placedWords.push(word);
-        for (let i = 0; i < word.answer.length; i++) {
-            const r = direction === 'across' ? row : row + i;
-            const c = direction === 'across' ? col + i : col;
+        for(let i=0;i<word.answer.length;i++){
+            const r = direction==='across' ? row : row + i;
+            const c = direction==='across' ? col + i : col;
             if (!gameState.grid[r][c]) gameState.grid[r][c] = { letter: word.answer[i], words: [] };
             gameState.grid[r][c].words.push(word);
         }
     }
 
-    function canPlace(word, row, col, direction) {
-        for (let i = -1; i <= word.answer.length; i++) {
-            const r = direction === 'across' ? row : row + i;
-            const c = direction === 'across' ? col + i : col;
-            if (r < 0 || c < 0 || r >= 25 || c >= 25) return false;
-            const isStartOrEnd = i === -1 || i === word.answer.length;
+    function canPlace(word,row,col,direction){
+        for(let i=-1;i<=word.answer.length;i++){
+            const r = direction==='across' ? row : row + i;
+            const c = direction==='across' ? col + i : col;
+            if (r<0 || c<0 || r>=25 || c>=25) return false;
+            const isStartOrEnd = i===-1 || i===word.answer.length;
             const cell = gameState.grid[r][c];
-            if (isStartOrEnd) {
+            if (isStartOrEnd){
                 if (cell) return false;
             } else {
-                const crossR = direction === 'across' ? r + 1 : r;
-                const crossC = direction === 'across' ? c : c + 1;
-                const crossR2 = direction === 'across' ? r - 1 : r;
-                const crossC2 = direction === 'across' ? c : c - 1;
-                if (cell) {
+                const crossR = direction==='across' ? r+1 : r;
+                const crossC = direction==='across' ? c : c+1;
+                const crossR2 = direction==='across' ? r-1 : r;
+                const crossC2 = direction==='across' ? c : c-1;
+                if (cell){
                     if (cell.letter !== word.answer[i]) return false;
                 } else {
                     if (gameState.grid[crossR]?.[crossC] || gameState.grid[crossR2]?.[crossC2]) return false;
@@ -381,78 +366,72 @@
     }
 
     // RENDERING
-    function renderGrid() {
+    function renderGrid(){
         const bounds = getGridBounds();
         ui.gridContainer.innerHTML = '';
         ui.gridContainer.style.gridTemplateColumns = `repeat(${bounds.width}, 35px)`;
         let wordNumber = 1;
-        gameState.placedWords.sort((a,b) => a.row - b.row || a.col - b.col).forEach(w => w.number = wordNumber++);
+        gameState.placedWords.sort((a,b)=>a.row-b.row||a.col-b.col).forEach(w=>w.number=wordNumber++);
 
-        for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
-            for (let c = bounds.minCol; c <= bounds.maxCol; c++) {
+        for(let r=bounds.minRow;r<=bounds.maxRow;r++){
+            for(let c=bounds.minCol;c<=bounds.maxCol;c++){
                 const cellDiv = document.createElement('div');
                 const cellData = gameState.grid[r]?.[c];
                 cellDiv.className = cellData ? 'grid-cell' : 'grid-cell empty';
-                if (cellData) {
+                if (cellData){
                     const input = document.createElement('input');
-                    input.type = 'text'; input.maxLength = 1;
+                    input.type='text'; input.maxLength=1;
                     input.dataset.row = r; input.dataset.col = c;
-
                     input.disabled = false;
                     input.value = '';
 
-                    // handlers
                     input.addEventListener('focus', (ev) => {
-                        selectWordFromCell(r, c);
+                        selectWordFromCell(r,c);
                         ev.target.select();
                         justFocused = true;
-                        setTimeout(() => { justFocused = false; }, 0);
+                        setTimeout(()=>{ justFocused = false; }, 0);
                         updateRevealButtonState();
                     });
 
                     input.addEventListener('click', (ev) => {
-                        if (justFocused) {
-                            justFocused = false;
-                            return;
-                        }
-                        toggleDirection(r, c);
+                        if (justFocused){ justFocused = false; return; }
+                        toggleDirection(r,c);
                         updateRevealButtonState();
                     });
 
                     input.addEventListener('keydown', (ev) => {
-                        if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight' || ev.key === 'ArrowUp' || ev.key === 'ArrowDown') {
+                        if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(ev.key)){
                             ev.preventDefault();
-                            moveFocusByArrow(r, c, ev.key);
-                        } else if (ev.key === 'Backspace') {
+                            moveFocusByArrow(r,c,ev.key);
+                        } else if (ev.key === 'Backspace'){
                             ev.preventDefault();
                             const selected = gameState.selectedWord;
                             if (!selected) return;
-                            const idx = getIndexInWord(selected, r, c);
+                            const idx = getIndexInWord(selected,r,c);
                             if (idx === -1) return;
-                            if (input.value) {
+                            if (input.value){
                                 input.value = '';
-                                checkWordCompletion(r, c);
-                            } else if (idx > 0) {
-                                // Move to previous editable cell (skips disabled letters)
+                                checkWordCompletion(r,c);
+                            } else if (idx > 0){
                                 focusEditableInWord(selected, idx, false);
                             }
-                        } else if (ev.key === 'Delete') {
+                        } else if (ev.key === 'Delete'){
                             ev.preventDefault();
                             input.value = '';
-                            checkWordCompletion(r, c);
+                            checkWordCompletion(r,c);
                         }
                     });
 
                     input.addEventListener('input', (ev) => {
-                        const ch = input.value.toUpperCase().replace(/[^A-Z]/g, '');
+                        const ch = input.value.toUpperCase().replace(/[^A-Z]/g,'');
                         input.value = ch;
-                        if (ch) handleAdvanceAfterType(r, c);
-                        checkWordCompletion(r, c);
+                        if (ch) handleAdvanceAfterType(r,c);
+                        checkWordCompletion(r,c);
                     });
 
                     cellDiv.appendChild(input);
-                    const wordStart = gameState.placedWords.find(w => w.row === r && w.col === c);
-                    if (wordStart) {
+                    const wordStart = gameState.placedWords.find(w=>w.row===r && w.col===c);
+                    if (wordStart){
                         const numberSpan = document.createElement('span');
                         numberSpan.textContent = wordStart.number;
                         cellDiv.appendChild(numberSpan);
@@ -463,95 +442,89 @@
         }
     }
 
-    function renderClues() {
+    function renderClues(){
         ui.acrossClues.innerHTML = '';
         ui.downClues.innerHTML = '';
-        const sortedWords = [...gameState.placedWords].sort((a, b) => a.number - b.number);
-        sortedWords.forEach(word => {
+        const sortedWords = [...gameState.placedWords].sort((a,b)=>a.number-b.number);
+        sortedWords.forEach(word=>{
             const clueDiv = document.createElement('div');
             clueDiv.innerHTML = `<b>${word.number}.</b> ${word.clue}`;
             clueDiv.className = 'clue';
             clueDiv.id = `clue-${word.number}`;
-            clueDiv.onclick = () => {
-                selectWord(word, true);
-                updateRevealButtonState();
-            };
+            clueDiv.onclick = () => { selectWord(word, true); updateRevealButtonState(); };
             (word.direction === 'across' ? ui.acrossClues : ui.downClues).appendChild(clueDiv);
         });
     }
 
     // SELECTION helpers
-    function selectWord(word, focus = false, focusIndex = null) {
+    function selectWord(word, focus=false, focusIndex=null){
         if (!word) return;
         gameState.selectedWord = word;
         gameState.lastDirection = word.direction;
 
-        document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
-        document.querySelectorAll('.selected-word').forEach(el => el.classList.remove('selected-word'));
+        document.querySelectorAll('.selected').forEach(el=>el.classList.remove('selected'));
+        document.querySelectorAll('.selected-word').forEach(el=>el.classList.remove('selected-word'));
         document.getElementById(`clue-${word.number}`)?.classList.add('selected');
 
-        for (let i = 0; i < word.answer.length; i++) {
-            const r = word.direction === 'across' ? word.row : word.row + i;
-            const c = word.direction === 'across' ? word.col + i : word.col;
+        for(let i=0;i<word.answer.length;i++){
+            const r = word.direction==='across' ? word.row : word.row + i;
+            const c = word.direction==='across' ? word.col + i : word.col;
             const input = document.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
             input?.parentElement.classList.add('selected-word');
         }
 
-        if (focus) {
-            if (Number.isInteger(focusIndex) && focusIndex >= 0 && focusIndex < word.answer.length) {
-                const fr = word.direction === 'across' ? word.row : word.row + focusIndex;
-                const fc = word.direction === 'across' ? word.col + focusIndex : word.col;
+        if (focus){
+            if (Number.isInteger(focusIndex) && focusIndex>=0 && focusIndex<word.answer.length){
+                const fr = word.direction==='across' ? word.row : word.row + focusIndex;
+                const fc = word.direction==='across' ? word.col + focusIndex : word.col;
                 const fe = document.querySelector(`input[data-row="${fr}"][data-col="${fc}"]`);
-                if (fe && !fe.disabled) { fe.focus(); updateRevealButtonState(); return; }
+                if (fe && !fe.disabled){ fe.focus(); updateRevealButtonState(); return; }
             }
-            for (let i = 0; i < word.answer.length; i++) {
-                const r = word.direction === 'across' ? word.row : word.row + i;
-                const c = word.direction === 'across' ? word.col + i : word.col;
+            for(let i=0;i<word.answer.length;i++){
+                const r = word.direction==='across' ? word.row : word.row + i;
+                const c = word.direction==='across' ? word.col + i : word.col;
                 const el = document.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
-                if (el && !el.disabled) { el.focus(); updateRevealButtonState(); return; }
+                if (el && !el.disabled){ el.focus(); updateRevealButtonState(); return; }
             }
         }
 
         updateRevealButtonState();
     }
 
-    function selectWordFromCell(row, col) {
+    function selectWordFromCell(row,col){
         const cell = gameState.grid[row]?.[col];
         if (!cell) return;
 
-        let words = cell.words.filter(w => !gameState.correctWords.has(w.answer) && !gameState.revealedWords.has(w.answer));
+        let words = cell.words.filter(w=>!gameState.correctWords.has(w.answer) && !gameState.revealedWords.has(w.answer));
         if (!words.length) words = cell.words;
         if (!words.length) return;
 
-        // Prefer last used direction if available
         let candidate = null;
-        if (gameState.lastDirection) {
-            candidate = words.find(w => w.direction === gameState.lastDirection);
+        if (gameState.lastDirection){
+            candidate = words.find(w=>w.direction===gameState.lastDirection);
+        }
+        if (!candidate){
+            const startingWords = words.filter(w=>w.row===row && w.col===col);
+            candidate = startingWords[0] || words.find(w=>w.direction==='across') || words[0];
         }
 
-        // Fallbacks: prefer starting word, then across, then any
-        if (!candidate) {
-            const startingWords = words.filter(w => w.row === row && w.col === col);
-            candidate = startingWords[0] || words.find(w => w.direction === 'across') || words[0];
-        }
-
-        const idx = getIndexInWord(candidate, row, col);
+        const idx = getIndexInWord(candidate,row,col);
         selectWord(candidate, true, idx);
         gameState.lastDirection = candidate.direction;
         updateRevealButtonState();
     }
 
-    function toggleDirection(row, col) {
+    function toggleDirection(row,col){
         const cell = gameState.grid[row][col];
         const currentWord = gameState.selectedWord;
-        const isInCurrent = currentWord && getIndexInWord(currentWord, row, col) !== -1;
-        if (isInCurrent && cell.words.length > 1) {
+        const isInCurrent = currentWord && getIndexInWord(currentWord,row,col)!==-1;
+        if (isInCurrent && cell.words.length>1){
             const currentDir = currentWord.direction;
-            let otherWords = cell.words.filter(w => w.direction !== currentDir && !gameState.correctWords.has(w.answer) && !gameState.revealedWords.has(w.answer));
-            if (!otherWords.length) otherWords = cell.words.filter(w => w.direction !== currentDir);
+            let otherWords = cell.words.filter(w=>w.direction!==currentDir && !gameState.correctWords.has(w.answer) && !gameState.revealedWords.has(w.answer));
+            if (!otherWords.length) otherWords = cell.words.filter(w=>w.direction!==currentDir);
             const otherWord = otherWords[0];
-            if (otherWord) {
-                const idx = getIndexInWord(otherWord, row, col);
+            if (otherWord){
+                const idx = getIndexInWord(otherWord,row,col);
                 selectWord(otherWord, true, idx);
                 gameState.lastDirection = otherWord.direction;
                 updateRevealButtonState();
@@ -559,105 +532,97 @@
         }
     }
 
-    // NAVIGATION helpers
-    function getIndexInWord(word, row, col) {
-        for (let i = 0; i < word.answer.length; i++) {
-            const r = word.direction === 'across' ? word.row : word.row + i;
-            const c = word.direction === 'across' ? word.col + i : word.col;
-            if (r === row && c === col) return i;
+    // NAV helpers
+    function getIndexInWord(word,row,col){
+        for(let i=0;i<word.answer.length;i++){
+            const r = word.direction==='across' ? word.row : word.row + i;
+            const c = word.direction==='across' ? word.col + i : word.col;
+            if (r===row && c===col) return i;
         }
         return -1;
     }
 
-    // Helper: focus next/previous editable letter in selected word (skips disabled cells)
-    function focusEditableInWord(word, startIdx, forward = true) {
+    // focus next/previous editable (skip disabled)
+    function focusEditableInWord(word,startIdx,forward=true){
         const step = forward ? 1 : -1;
         let i = startIdx + step;
-        while (i >= 0 && i < word.answer.length) {
-            const r = word.direction === 'across' ? word.row : word.row + i;
-            const c = word.direction === 'across' ? word.col + i : word.col;
+        while(i>=0 && i<word.answer.length){
+            const r = word.direction==='across' ? word.row : word.row + i;
+            const c = word.direction==='across' ? word.col + i : word.col;
             const el = document.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
-            if (el && !el.disabled) { el.focus(); return true; }
+            if (el && !el.disabled){ el.focus(); return true; }
             i += step;
         }
         return false;
     }
 
-    function handleAdvanceAfterType(row, col) {
+    function handleAdvanceAfterType(row,col){
         const selected = gameState.selectedWord;
         if (!selected) return;
-        const idx = getIndexInWord(selected, row, col);
-        if (idx === -1) return;
-
-        // Move to the next editable cell in this word, skipping disabled (solved/revealed) cells
+        const idx = getIndexInWord(selected,row,col);
+        if (idx===-1) return;
         const moved = focusEditableInWord(selected, idx, true);
-        if (!moved) {
+        if (!moved){
             const curInput = document.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
             if (curInput) curInput.focus();
         }
     }
 
-    function moveFocusByArrow(row, col, key) {
+    function moveFocusByArrow(row,col,key){
         let target;
-        if (key === 'ArrowLeft') target = [row, col - 1];
-        if (key === 'ArrowRight') target = [row, col + 1];
-        if (key === 'ArrowUp') target = [row - 1, col];
-        if (key === 'ArrowDown') target = [row + 1, col];
+        if (key==='ArrowLeft') target=[row,col-1];
+        if (key==='ArrowRight') target=[row,col+1];
+        if (key==='ArrowUp') target=[row-1,col];
+        if (key==='ArrowDown') target=[row+1,col];
         if (!target) return;
         const el = document.querySelector(`input[data-row="${target[0]}"][data-col="${target[1]}"]`);
         if (el && !el.disabled) el.focus();
     }
 
     // CHECK / HIGHLIGHT
-    function checkWordCompletion(row, col) {
+    function checkWordCompletion(row,col){
         const cell = gameState.grid[row][col];
         if (!cell) return;
-        cell.words.forEach(word => {
+        cell.words.forEach(word=>{
             let currentGuess = '';
-            for (let i = 0; i < word.answer.length; i++) {
-                const r = word.direction === 'across' ? word.row : word.row + i;
-                const c = word.direction === 'across' ? word.col + i : word.col;
+            for(let i=0;i<word.answer.length;i++){
+                const r = word.direction==='across' ? word.row : word.row + i;
+                const c = word.direction==='across' ? word.col + i : word.col;
                 currentGuess += document.querySelector(`input[data-row="${r}"][data-col="${c}"]`)?.value.toUpperCase() || ' ';
             }
-            if (currentGuess === word.answer && !gameState.correctWords.has(word.answer) && !gameState.revealedWords.has(word.answer)) {
+            if (currentGuess === word.answer && !gameState.correctWords.has(word.answer) && !gameState.revealedWords.has(word.answer)){
                 gameState.correctWords.add(word.answer);
-                highlightWord(word, 'correct');
+                highlightWord(word,'correct');
             }
         });
         checkWinCondition();
         updateRevealButtonState();
     }
 
-    function highlightWord(word, typeClass) {
-        for (let i = 0; i < word.answer.length; i++) {
-            const r = word.direction === 'across' ? word.row : word.row + i;
-            const c = word.direction === 'across' ? word.col + i : word.col;
+    function highlightWord(word,typeClass){
+        for(let i=0;i<word.answer.length;i++){
+            const r = word.direction==='across' ? word.row : word.row + i;
+            const c = word.direction==='across' ? word.col + i : word.col;
             const input = document.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
-            if (input) {
+            if (input){
                 input.parentElement.classList.add(typeClass);
-                if (typeClass === 'correct' || typeClass === 'revealed') {
-                    input.disabled = true;
-                }
+                if (typeClass === 'correct' || typeClass === 'revealed') input.disabled = true;
             }
         }
         const clueEl = document.getElementById(`clue-${word.number}`);
         if (clueEl) clueEl.classList.add(typeClass);
     }
 
-    function revealWord() {
+    function revealWord(){
         const word = gameState.selectedWord;
         if (!word || gameState.correctWords.has(word.answer) || gameState.revealedWords.has(word.answer)) return;
-
-        for (let i = 0; i < word.answer.length; i++) {
-            const r = word.direction === 'across' ? word.row : word.row + i;
-            const c = word.direction === 'across' ? word.col + i : word.col;
+        for(let i=0;i<word.answer.length;i++){
+            const r = word.direction==='across' ? word.row : word.row + i;
+            const c = word.direction==='across' ? word.col + i : word.col;
             const input = document.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
-            if (input) {
-                input.value = word.answer[i];
-                input.disabled = true;
-            }
+            if (input){ input.value = word.answer[i]; input.disabled = true; }
         }
-        highlightWord(word, 'revealed');
+        highlightWord(word,'revealed');
         gameState.revealedWords.add(word.answer);
         gameState.reveals++;
         ui.revealCounter.textContent = gameState.reveals;
@@ -665,40 +630,62 @@
         updateRevealButtonState();
     }
 
-    function checkWinCondition() {
-        if (gameState.correctWords.size + gameState.revealedWords.size === gameState.placedWords.length) {
+    function checkWinCondition(){
+        if (gameState.correctWords.size + gameState.revealedWords.size === gameState.placedWords.length){
             stopTimer();
             ui.winBanner.classList.remove('hidden');
-            document.querySelectorAll('.grid-cell input').forEach(input => input.disabled = true);
+            document.querySelectorAll('.grid-cell input').forEach(input=>input.disabled=true);
         }
     }
 
-    function startTimer() {
+    function startTimer(){
         gameState.startTime = Date.now();
-        gameState.timerInterval = setInterval(() => {
-            const elapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
-            const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
-            const seconds = String(elapsed % 60).padStart(2, '0');
+        gameState.timerInterval = setInterval(()=>{
+            const elapsed = Math.floor((Date.now()-gameState.startTime)/1000);
+            const minutes = String(Math.floor(elapsed/60)).padStart(2,'0');
+            const seconds = String(elapsed%60).padStart(2,'0');
             ui.stopwatch.textContent = `${minutes}:${seconds}`;
-        }, 1000);
+        },1000);
     }
 
-    function stopTimer() { clearInterval(gameState.timerInterval); }
+    function stopTimer(){ clearInterval(gameState.timerInterval); }
 
-    function getGridBounds() {
-        let minR = 25, maxR = 0, minC = 25, maxC = 0;
-        gameState.placedWords.forEach(w => {
+    function getGridBounds(){
+        let minR=25, maxR=0, minC=25, maxC=0;
+        gameState.placedWords.forEach(w=>{
             minR = Math.min(minR, w.row);
             minC = Math.min(minC, w.col);
-            maxR = Math.max(maxR, w.direction === 'down' ? w.row + w.answer.length - 1 : w.row);
-            maxC = Math.max(maxC, w.direction === 'across' ? w.col + w.answer.length - 1 : w.col);
+            maxR = Math.max(maxR, w.direction==='down' ? w.row + w.answer.length - 1 : w.row);
+            maxC = Math.max(maxC, w.direction==='across' ? w.col + w.answer.length - 1 : w.col);
         });
-        return { minRow: minR - 1, maxRow: maxR + 1, minCol: minC - 1, maxCol: maxC + 1, width: maxC - minC + 3 };
+        return { minRow: minR-1, maxRow: maxR+1, minCol: minC-1, maxCol: maxC+1, width: maxC - minC + 3 };
+    }
+
+    function resetGameState(){ // call initially
+        gameState = {
+            grid: [],
+            placedWords: [],
+            timerInterval: null,
+            startTime: null,
+            reveals: 0,
+            correctWords: new Set(),
+            revealedWords: new Set(),
+            selectedWord: null,
+            lastDirection: null,
+            sourceKey: null,
+            sourceUrl: null
+        };
+        ui.revealCounter.textContent = 0;
+        ui.stopwatch.textContent = '00:00';
+        ui.revealWordButton.disabled = true;
+        ui.acrossClues.innerHTML = '';
+        ui.downClues.innerHTML = '';
+        ui.gridContainer.innerHTML = '';
     }
 
     // initialize
     resetGameState();
 </script>
-
 </body>
 </html>
+```
