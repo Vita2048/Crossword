@@ -129,7 +129,8 @@
         .clue.revealed { color: var(--color-revealed); font-style: italic; }
 
         #initial-setup, #loading-screen { text-align:center; padding:50px 0; }
-        #initial-setup button { padding:15px 30px; font-size:1.2em; }
+        #initial-setup .choice { display:inline-block; margin:10px; }
+        #initial-setup .choice .btn { padding:15px 30px; font-size:1.1em; min-width:160px; }
 
         #win-banner { font-size:3em; font-weight:bold; margin:20px 0; animation: flash 1s infinite; text-align:center; }
         @keyframes flash { 0%,100%{ color:#28a745; text-shadow:0 0 10px #28a745 } 50%{ color:#facc15; text-shadow:0 0 10px #facc15 } }
@@ -159,7 +160,13 @@
         </header>
 
         <div id="initial-setup">
-             <button class="btn">Start New Game</button>
+            <div style="margin-bottom:12px; font-size:1.1em; color:var(--text-secondary);">Choose a puzzle source</div>
+            <div class="choice">
+                <button id="btn-generic" class="btn">Generic Bible</button>
+            </div>
+            <div class="choice">
+                <button id="btn-revelation" class="btn">Revelations</button>
+            </div>
         </div>
 
         <div id="loading-screen" class="hidden">Loading...</div>
@@ -191,12 +198,31 @@
         winBanner: document.getElementById('win-banner'),
         revealWordButton: document.getElementById('reveal-word-btn'),
         newGameButton: document.getElementById('new-game-btn'),
+        btnGeneric: document.getElementById('btn-generic'),
+        btnRevelation: document.getElementById('btn-revelation'),
     };
 
-    const startGameButton = document.querySelector('#initial-setup .btn');
-    startGameButton.addEventListener('click', startGame);
+    // centralized update function is declared early so it's available for selectWord/startGame etc.
+    function updateRevealButtonState() {
+        const w = gameState.selectedWord;
+        if (!w) {
+            ui.revealWordButton.disabled = true;
+            return;
+        }
+        ui.revealWordButton.disabled =
+            gameState.correctWords.has(w.answer) || gameState.revealedWords.has(w.answer);
+    }
+
+    ui.btnGeneric.addEventListener('click', () => startGameWithSource('generic'));
+    ui.btnRevelation.addEventListener('click', () => startGameWithSource('revelation'));
     ui.revealWordButton.addEventListener('click', revealWord);
-    ui.newGameButton.addEventListener('click', startGame);
+    ui.newGameButton.addEventListener('click', () => {
+        ui.initialSetup.classList.remove('hidden');
+        ui.mainContent.classList.add('hidden');
+        ui.winBanner.classList.add('hidden');
+        ui.loadingScreen.classList.add('hidden');
+        stopTimer();
+    });
 
     let gameState = {};
     let justFocused = false;
@@ -209,18 +235,44 @@
             startTime: null,
             reveals: 0,
             correctWords: new Set(),
+            revealedWords: new Set(),
             selectedWord: null,
+            lastDirection: null,
+            sourceKey: null,
+            sourceUrl: null
         };
+        ui.revealCounter.textContent = 0;
+        ui.stopwatch.textContent = '00:00';
+        ui.revealWordButton.disabled = true;
+        ui.acrossClues.innerHTML = '';
+        ui.downClues.innerHTML = '';
+        ui.gridContainer.innerHTML = '';
+    }
+
+    const SOURCE_URLS = {
+        generic: 'https://vita2048.github.io/Crossword/BibleDB.csv',
+        revelation: 'https://vita2048.github.io/Crossword/BibleDBRevelation.csv'
+    };
+
+    function startGameWithSource(sourceKey) {
+        resetGameState();
+        gameState.sourceKey = sourceKey;
+        gameState.sourceUrl = SOURCE_URLS[sourceKey] || SOURCE_URLS.generic;
+        ui.initialSetup.classList.add('hidden');
+        ui.winBanner.classList.add('hidden');
+        ui.mainContent.classList.add('hidden');
+        ui.loadingScreen.classList.remove('hidden');
+        startGame();
     }
 
     async function fetchClues(count = 200) {
-        const url = 'https://vita2048.github.io/Crossword/BibleDB.csv';
+        const url = gameState.sourceUrl || SOURCE_URLS.generic;
         const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
         const text = await response.text();
         const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
         let startIndex = 0;
-        if (lines[0].toUpperCase().startsWith('ANSWER')) startIndex = 1;
+        if (lines[0] && lines[0].toUpperCase().startsWith('ANSWER')) startIndex = 1;
         const pairs = [];
         for (let i = startIndex; i < lines.length && pairs.length < count; i++) {
             const idx = lines[i].indexOf(',');
@@ -240,10 +292,6 @@
 
     async function startGame() {
         if (gameState.timerInterval) stopTimer();
-        resetGameState();
-        ui.initialSetup.classList.add('hidden');
-        ui.winBanner.classList.add('hidden');
-        ui.mainContent.classList.add('hidden');
         ui.loadingScreen.classList.remove('hidden');
 
         try {
@@ -257,6 +305,7 @@
             ui.loadingScreen.classList.add('hidden');
             ui.mainContent.classList.remove('hidden');
             startTimer();
+            updateRevealButtonState();
         } catch (error) {
             console.error('Error starting game:', error);
             ui.loadingScreen.innerHTML = 'Failed to generate crossword. Please try again.';
@@ -358,6 +407,7 @@
                         ev.target.select();
                         justFocused = true;
                         setTimeout(() => { justFocused = false; }, 0);
+                        updateRevealButtonState();
                     });
 
                     input.addEventListener('click', (ev) => {
@@ -366,6 +416,7 @@
                             return;
                         }
                         toggleDirection(r, c);
+                        updateRevealButtonState();
                     });
 
                     input.addEventListener('keydown', (ev) => {
@@ -382,11 +433,8 @@
                                 input.value = '';
                                 checkWordCompletion(r, c);
                             } else if (idx > 0) {
-                                const prevIdx = idx - 1;
-                                const prevRow = selected.direction === 'across' ? selected.row : selected.row + prevIdx;
-                                const prevCol = selected.direction === 'across' ? selected.col + prevIdx : selected.col;
-                                const prevInput = document.querySelector(`input[data-row="${prevRow}"][data-col="${prevCol}"]`);
-                                if (prevInput && !prevInput.disabled) prevInput.focus();
+                                // Move to previous editable cell (skips disabled letters)
+                                focusEditableInWord(selected, idx, false);
                             }
                         } else if (ev.key === 'Delete') {
                             ev.preventDefault();
@@ -424,7 +472,10 @@
             clueDiv.innerHTML = `<b>${word.number}.</b> ${word.clue}`;
             clueDiv.className = 'clue';
             clueDiv.id = `clue-${word.number}`;
-            clueDiv.onclick = () => selectWord(word, true);
+            clueDiv.onclick = () => {
+                selectWord(word, true);
+                updateRevealButtonState();
+            };
             (word.direction === 'across' ? ui.acrossClues : ui.downClues).appendChild(clueDiv);
         });
     }
@@ -433,6 +484,8 @@
     function selectWord(word, focus = false, focusIndex = null) {
         if (!word) return;
         gameState.selectedWord = word;
+        gameState.lastDirection = word.direction;
+
         document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
         document.querySelectorAll('.selected-word').forEach(el => el.classList.remove('selected-word'));
         document.getElementById(`clue-${word.number}`)?.classList.add('selected');
@@ -449,32 +502,43 @@
                 const fr = word.direction === 'across' ? word.row : word.row + focusIndex;
                 const fc = word.direction === 'across' ? word.col + focusIndex : word.col;
                 const fe = document.querySelector(`input[data-row="${fr}"][data-col="${fc}"]`);
-                if (fe && !fe.disabled) { fe.focus(); return; }
+                if (fe && !fe.disabled) { fe.focus(); updateRevealButtonState(); return; }
             }
             for (let i = 0; i < word.answer.length; i++) {
                 const r = word.direction === 'across' ? word.row : word.row + i;
                 const c = word.direction === 'across' ? word.col + i : word.col;
                 const el = document.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
-                if (el && !el.disabled) { el.focus(); return; }
+                if (el && !el.disabled) { el.focus(); updateRevealButtonState(); return; }
             }
         }
 
-        ui.revealWordButton.disabled = gameState.correctWords.has(word.answer);
+        updateRevealButtonState();
     }
 
     function selectWordFromCell(row, col) {
         const cell = gameState.grid[row]?.[col];
         if (!cell) return;
 
-        let words = cell.words.filter(w => !gameState.correctWords.has(w.answer));
+        let words = cell.words.filter(w => !gameState.correctWords.has(w.answer) && !gameState.revealedWords.has(w.answer));
         if (!words.length) words = cell.words;
         if (!words.length) return;
 
-        const startingWords = words.filter(w => w.row === row && w.col === col);
-        let candidate = startingWords[0] || words.find(w => w.direction === 'across') || words[0];
+        // Prefer last used direction if available
+        let candidate = null;
+        if (gameState.lastDirection) {
+            candidate = words.find(w => w.direction === gameState.lastDirection);
+        }
+
+        // Fallbacks: prefer starting word, then across, then any
+        if (!candidate) {
+            const startingWords = words.filter(w => w.row === row && w.col === col);
+            candidate = startingWords[0] || words.find(w => w.direction === 'across') || words[0];
+        }
 
         const idx = getIndexInWord(candidate, row, col);
         selectWord(candidate, true, idx);
+        gameState.lastDirection = candidate.direction;
+        updateRevealButtonState();
     }
 
     function toggleDirection(row, col) {
@@ -483,12 +547,14 @@
         const isInCurrent = currentWord && getIndexInWord(currentWord, row, col) !== -1;
         if (isInCurrent && cell.words.length > 1) {
             const currentDir = currentWord.direction;
-            let otherWords = cell.words.filter(w => w.direction !== currentDir && !gameState.correctWords.has(w.answer));
+            let otherWords = cell.words.filter(w => w.direction !== currentDir && !gameState.correctWords.has(w.answer) && !gameState.revealedWords.has(w.answer));
             if (!otherWords.length) otherWords = cell.words.filter(w => w.direction !== currentDir);
             const otherWord = otherWords[0];
             if (otherWord) {
                 const idx = getIndexInWord(otherWord, row, col);
                 selectWord(otherWord, true, idx);
+                gameState.lastDirection = otherWord.direction;
+                updateRevealButtonState();
             }
         }
     }
@@ -503,18 +569,29 @@
         return -1;
     }
 
+    // Helper: focus next/previous editable letter in selected word (skips disabled cells)
+    function focusEditableInWord(word, startIdx, forward = true) {
+        const step = forward ? 1 : -1;
+        let i = startIdx + step;
+        while (i >= 0 && i < word.answer.length) {
+            const r = word.direction === 'across' ? word.row : word.row + i;
+            const c = word.direction === 'across' ? word.col + i : word.col;
+            const el = document.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+            if (el && !el.disabled) { el.focus(); return true; }
+            i += step;
+        }
+        return false;
+    }
+
     function handleAdvanceAfterType(row, col) {
         const selected = gameState.selectedWord;
         if (!selected) return;
         const idx = getIndexInWord(selected, row, col);
         if (idx === -1) return;
-        const nextIdx = idx + 1;
-        if (nextIdx < selected.answer.length) {
-            const nextRow = selected.direction === 'across' ? selected.row : selected.row + nextIdx;
-            const nextCol = selected.direction === 'across' ? selected.col + nextIdx : selected.col;
-            const nextInput = document.querySelector(`input[data-row="${nextRow}"][data-col="${nextCol}"]`);
-            if (nextInput && !nextInput.disabled) nextInput.focus();
-        } else {
+
+        // Move to the next editable cell in this word, skipping disabled (solved/revealed) cells
+        const moved = focusEditableInWord(selected, idx, true);
+        if (!moved) {
             const curInput = document.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
             if (curInput) curInput.focus();
         }
@@ -542,12 +619,13 @@
                 const c = word.direction === 'across' ? word.col + i : word.col;
                 currentGuess += document.querySelector(`input[data-row="${r}"][data-col="${c}"]`)?.value.toUpperCase() || ' ';
             }
-            if (currentGuess === word.answer && !gameState.correctWords.has(word.answer)) {
+            if (currentGuess === word.answer && !gameState.correctWords.has(word.answer) && !gameState.revealedWords.has(word.answer)) {
                 gameState.correctWords.add(word.answer);
                 highlightWord(word, 'correct');
             }
         });
         checkWinCondition();
+        updateRevealButtonState();
     }
 
     function highlightWord(word, typeClass) {
@@ -568,7 +646,8 @@
 
     function revealWord() {
         const word = gameState.selectedWord;
-        if (!word || gameState.correctWords.has(word.answer)) return;
+        if (!word || gameState.correctWords.has(word.answer) || gameState.revealedWords.has(word.answer)) return;
+
         for (let i = 0; i < word.answer.length; i++) {
             const r = word.direction === 'across' ? word.row : word.row + i;
             const c = word.direction === 'across' ? word.col + i : word.col;
@@ -579,15 +658,15 @@
             }
         }
         highlightWord(word, 'revealed');
-        gameState.correctWords.add(word.answer);
+        gameState.revealedWords.add(word.answer);
         gameState.reveals++;
         ui.revealCounter.textContent = gameState.reveals;
-        ui.revealWordButton.disabled = true;
         checkWinCondition();
+        updateRevealButtonState();
     }
 
     function checkWinCondition() {
-        if (gameState.correctWords.size === gameState.placedWords.length) {
+        if (gameState.correctWords.size + gameState.revealedWords.size === gameState.placedWords.length) {
             stopTimer();
             ui.winBanner.classList.remove('hidden');
             document.querySelectorAll('.grid-cell input').forEach(input => input.disabled = true);
@@ -617,6 +696,7 @@
         return { minRow: minR - 1, maxRow: maxR + 1, minCol: minC - 1, maxCol: maxC + 1, width: maxC - minC + 3 };
     }
 
+    // initialize
     resetGameState();
 </script>
 
