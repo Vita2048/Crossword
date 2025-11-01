@@ -261,27 +261,50 @@ async function startGame(){
   }
 }
 
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
 function generateCrosswordLayout(cluePairs){
+  // Shuffle first
+  shuffleArray(cluePairs);
+
+  // Optionally sort only the top few to favor longer words
   cluePairs.sort((a,b)=>b.answer.length-a.answer.length);
+
   const gridSize = 25;
   gameState.grid = Array(gridSize).fill(null).map(()=>Array(gridSize).fill(null));
-  const firstWord = cluePairs.shift();
-  placeWord(firstWord,12,Math.floor((gridSize-firstWord.answer.length)/2),'across');
+
+  // Pick a random starting word instead of always the first
+  const firstWordIndex = Math.floor(Math.random() * Math.min(5, cluePairs.length));
+  const firstWord = cluePairs.splice(firstWordIndex, 1)[0];
+
+  placeWord(firstWord, 12, Math.floor((gridSize - firstWord.answer.length)/2), 'across');
+
   let placedCount = 0;
   const maxWords = 15;
-  while(cluePairs.length>0 && placedCount<maxWords){
+
+  while(cluePairs.length > 0 && placedCount < maxWords){
     const wordToPlace = cluePairs.shift();
-    let placed=false;
-    for(const placedWord of gameState.placedWords){
+    let placed = false;
+
+    // Randomize the order of already placed words to vary intersections
+    const placedWordsShuffled = [...gameState.placedWords];
+    shuffleArray(placedWordsShuffled);
+
+    for(const placedWord of placedWordsShuffled){
       for(let i=0;i<wordToPlace.answer.length;i++){
         for(let j=0;j<placedWord.answer.length;j++){
-          if (wordToPlace.answer[i]===placedWord.answer[j]){
+          if (wordToPlace.answer[i] === placedWord.answer[j]){
             const newDirection = placedWord.direction==='across' ? 'down' : 'across';
             const newRow = placedWord.direction==='across' ? placedWord.row - i : placedWord.row + j;
             const newCol = placedWord.direction==='across' ? placedWord.col + j : placedWord.col - i;
             if (canPlace(wordToPlace,newRow,newCol,newDirection)){
               placeWord(wordToPlace,newRow,newCol,newDirection);
-              placed=true; placedCount++; break;
+              placed = true; placedCount++; break;
             }
           }
         }
@@ -291,6 +314,7 @@ function generateCrosswordLayout(cluePairs){
     }
   }
 }
+
 
 function placeWord(word,row,col,direction){
   word.row=row; word.col=col; word.direction=direction;
