@@ -219,25 +219,100 @@ async function fetchClues(count = 200){
   throw new Error('No source available');
 }
 
+// --- Replace parseCSV with this ---
 function parseCSV(text, count){
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   let startIndex = 0;
   if (lines[0] && lines[0].toUpperCase().startsWith('ANSWER')) startIndex = 1;
-  const pairs = [];
-  for (let i = startIndex; i < lines.length && pairs.length < count; i++){
+
+  // Build full list of candidate pairs first
+  const allPairs = [];
+  for (let i = startIndex; i < lines.length; i++){
     const idx = lines[i].indexOf(',');
     if (idx === -1) continue;
     let answer = lines[i].slice(0, idx).trim().toUpperCase().replace(/[^A-Z]/g,'');
     let clue = lines[i].slice(idx+1).trim();
     if (!answer || !clue) continue;
     if (answer.length <= 2 || answer.length >= 15) continue;
-    pairs.push({ answer, clue });
+    allPairs.push({ answer, clue });
   }
-  for (let i = pairs.length-1; i>0; i--){
-    const j = Math.floor(Math.random()*(i+1));
-    [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
+
+  // If there are fewer than requested, return all after shuffling
+  // Shuffle full list (Fisher-Yates)
+  for (let i = allPairs.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [allPairs[i], allPairs[j]] = [allPairs[j], allPairs[i]];
   }
-  return pairs;
+
+  // Return up to `count` items from the shuffled list
+  return allPairs.slice(0, Math.min(count, allPairs.length));
+}
+
+// --- Replace generateCrosswordLayout with this ---
+function generateCrosswordLayout(cluePairs){
+  // cluePairs already randomized by parseCSV; make a shallow copy we can mutate
+  const pool = [...cluePairs];
+
+  const gridSize = 25;
+  gameState.grid = Array(gridSize).fill(null).map(()=>Array(gridSize).fill(null));
+  gameState.placedWords = [];
+
+  if (pool.length === 0) return;
+
+  // Pick a random starting word from a wider initial window (up to first 50 or pool length)
+  const initialWindow = Math.min(50, pool.length);
+  const firstWordIndex = Math.floor(Math.random() * initialWindow);
+  const firstWord = pool.splice(firstWordIndex, 1)[0];
+
+  placeWord(firstWord, Math.floor(gridSize/2), Math.floor((gridSize - firstWord.answer.length)/2), 'across');
+
+  // start counting with the already placed first word
+  let placedCount = 1;
+  const maxWords = 15;
+
+  // We'll try until pool empty or we've placed maxWords or we've exhausted attempts
+  let attempts = 0;
+  const MAX_ATTEMPTS = pool.length * 4 + 200;
+
+  while(pool.length > 0 && placedCount < maxWords && attempts < MAX_ATTEMPTS){
+    attempts++;
+
+    // pick a random candidate from the pool rather than shift() — this reduces deterministic patterns
+    const idx = Math.floor(Math.random() * pool.length);
+    const wordToPlace = pool.splice(idx, 1)[0];
+    let placed = false;
+
+    // Randomize the order of already placed words to vary intersections
+    const placedWordsShuffled = [...gameState.placedWords];
+    shuffleArray(placedWordsShuffled);
+
+    // try to place using intersections
+    for(const placedWord of placedWordsShuffled){
+      for(let i=0;i<wordToPlace.answer.length && !placed;i++){
+        for(let j=0;j<placedWord.answer.length && !placed;j++){
+          if (wordToPlace.answer[i] === placedWord.answer[j]){
+            const newDirection = placedWord.direction==='across' ? 'down' : 'across';
+            const newRow = placedWord.direction==='across' ? placedWord.row - i : placedWord.row + j;
+            const newCol = placedWord.direction==='across' ? placedWord.col + j : placedWord.col - i;
+            if (canPlace(wordToPlace,newRow,newCol,newDirection)){
+              placeWord(wordToPlace,newRow,newCol,newDirection);
+              placed = true;
+              placedCount++;
+              break;
+            }
+          }
+        }
+      }
+      if (placed) break;
+    }
+
+    // If placement failed, push wordToPlace into a small retry bucket to try later with less frequency
+    if (!placed){
+      // occasionally re-insert into pool to give another chance, but not always
+      if (Math.random() < 0.25) pool.push(wordToPlace);
+      // otherwise drop it (prevents infinite loops)
+    }
+  }
 }
 
 async function startGame(){
@@ -268,52 +343,6 @@ function shuffleArray(arr) {
   }
 }
 
-function generateCrosswordLayout(cluePairs){
-  // Shuffle first
-  shuffleArray(cluePairs);
-
-  // Optionally sort only the top few to favor longer words
-  cluePairs.sort((a,b)=>b.answer.length-a.answer.length);
-
-  const gridSize = 25;
-  gameState.grid = Array(gridSize).fill(null).map(()=>Array(gridSize).fill(null));
-
-  // Pick a random starting word instead of always the first
-  const firstWordIndex = Math.floor(Math.random() * Math.min(5, cluePairs.length));
-  const firstWord = cluePairs.splice(firstWordIndex, 1)[0];
-
-  placeWord(firstWord, 12, Math.floor((gridSize - firstWord.answer.length)/2), 'across');
-
-  let placedCount = 0;
-  const maxWords = 15;
-
-  while(cluePairs.length > 0 && placedCount < maxWords){
-    const wordToPlace = cluePairs.shift();
-    let placed = false;
-
-    // Randomize the order of already placed words to vary intersections
-    const placedWordsShuffled = [...gameState.placedWords];
-    shuffleArray(placedWordsShuffled);
-
-    for(const placedWord of placedWordsShuffled){
-      for(let i=0;i<wordToPlace.answer.length;i++){
-        for(let j=0;j<placedWord.answer.length;j++){
-          if (wordToPlace.answer[i] === placedWord.answer[j]){
-            const newDirection = placedWord.direction==='across' ? 'down' : 'across';
-            const newRow = placedWord.direction==='across' ? placedWord.row - i : placedWord.row + j;
-            const newCol = placedWord.direction==='across' ? placedWord.col + j : placedWord.col - i;
-            if (canPlace(wordToPlace,newRow,newCol,newDirection)){
-              placeWord(wordToPlace,newRow,newCol,newDirection);
-              placed = true; placedCount++; break;
-            }
-          }
-        }
-        if (placed) break;
-      }
-      if (placed) break;
-    }
-  }
-}
 
 
 function placeWord(word,row,col,direction){
